@@ -115,17 +115,16 @@
 ;; Automatically refresh buffers when files change on disk
 (global-auto-revert-mode 1)
 
-;; Ruler line at column 80
+;; Ruler line at column 80 (visible regardless of zoom)
 (setq-default display-fill-column-indicator-column 80)
 (global-display-fill-column-indicator-mode 1)
+;; Make ruler visible on Monokai Pro background
+(with-eval-after-load 'doom-themes
+  (set-face-attribute 'fill-column-indicator nil :foreground "#5b595c"))
 
-;; Soft word wrap at 72 characters (visual only, no hard newlines)
-(setq-default fill-column 72)
-(global-visual-line-mode 1)
-(use-package visual-fill-column
-  :hook (visual-line-mode . visual-fill-column-mode)
-  :config
-  (setq-default visual-fill-column-width 72))
+;; Word wrap at window edge (like Sublime default)
+(setq-default word-wrap t)
+(setq-default truncate-lines nil)
 
 ;; ============================================================================
 ;; 3. Font
@@ -189,11 +188,39 @@
         centaur-tabs-set-bar 'under
         x-underline-at-descent-line t)
   (centaur-tabs-group-by-projectile-project)
+
+  ;; Hide internal/special buffers from tabs — only show real files
+  (defun my/centaur-tabs-hide-tab (buffer)
+    "Hide BUFFER from tabs if it's a special/internal buffer."
+    (let ((name (buffer-name buffer)))
+      (or (string-prefix-p "*" name)
+          (string-prefix-p " " name))))
+  (setq centaur-tabs-hide-tab-function #'my/centaur-tabs-hide-tab)
   :bind
   (("C-<tab>"     . centaur-tabs-forward)
    ("C-<iso-lefttab>" . centaur-tabs-backward)
    ("C-S-<tab>"   . centaur-tabs-backward)
-   ("C-w"         . centaur-tabs-close-tab)))  ; Sublime: C-w closes tab
+   ("C-w"         . centaur-tabs--kill-this-buffer-dont-ask)))  ; Sublime: C-w closes tab
+
+;; Reopen closed tab (C-S-t) — track closed file paths
+(defvar my/closed-file-history nil "List of recently closed file paths.")
+
+(defun my/track-closed-file ()
+  "Save the file path before a buffer is killed."
+  (when buffer-file-name
+    (push buffer-file-name my/closed-file-history)))
+(add-hook 'kill-buffer-hook #'my/track-closed-file)
+
+(defun my/reopen-closed-tab ()
+  "Reopen the most recently closed file tab."
+  (interactive)
+  (if my/closed-file-history
+      (let ((file (pop my/closed-file-history)))
+        (if (file-exists-p file)
+            (find-file file)
+          (my/reopen-closed-tab)))  ; skip deleted files
+    (message "No closed tabs to reopen")))
+(global-set-key (kbd "C-S-t") #'my/reopen-closed-tab)
 
 ;; ============================================================================
 ;; 7. File Sidebar — treemacs
@@ -203,8 +230,9 @@
   :bind ("C-b" . treemacs)  ; Sublime: C-b toggle sidebar
   :config
   (setq treemacs-width 30
-        treemacs-is-never-other-window t
-        treemacs-show-hidden-files t)
+        treemacs-is-never-other-window nil
+        treemacs-show-hidden-files t
+        treemacs-display-in-side-window nil)  ; avoid side-window conflicts
   (treemacs-follow-mode 1)
   (treemacs-filewatch-mode 1)
   (treemacs-git-mode 'deferred))
@@ -441,7 +469,14 @@
 ;; Unbind Emacs-only keys that don't exist in Sublime and cause confusion
 (global-unset-key (kbd "C-j"))  ; was: newline-and-indent / join-line
 (global-unset-key (kbd "C-k"))  ; was: kill-line
-(global-unset-key (kbd "C-o"))  ; was: open-line
+;; C-o: open folder as working directory (Sublime: Open Folder)
+(defun my/open-folder ()
+  "Choose a folder to open as project workspace in treemacs."
+  (interactive)
+  (let ((dir (read-directory-name "Open folder: ")))
+    (setq default-directory dir)
+    (treemacs-select-directory)))
+(global-set-key (kbd "C-o") #'my/open-folder)
 (global-unset-key (kbd "C-t"))  ; was: transpose-chars
 (global-unset-key (kbd "C-y"))  ; was: yank (C-v is paste via CUA)
 (global-unset-key (kbd "C-u"))  ; was: universal-argument
