@@ -264,14 +264,26 @@
 
 (use-package consult
   :bind
-  (("C-p"   . consult-find)       ; Sublime: C-p file finder
-   ("C-S-p" . execute-extended-command) ; Sublime: C-S-p command palette
+  (("C-S-p" . execute-extended-command) ; Sublime: C-S-p command palette
    ("C-f"   . consult-line)       ; Sublime: C-f search in buffer
-   ("C-S-f" . consult-ripgrep)    ; Sublime: C-S-f search in project
    ("C-g"   . consult-goto-line)  ; Sublime: C-g goto line
    ("C-r"   . consult-recent-file)) ; Sublime: C-r recent files
   :config
   (setq consult-find-args "find . -not -path '*/.*' -not -path '*/node_modules/*'"))
+
+;; C-p / C-S-f: always search in project dir (set by C-o), not .emacs.d
+(defun my/find-file ()
+  "Find file in project directory."
+  (interactive)
+  (consult-find (or my/project-dir default-directory)))
+
+(defun my/search-project ()
+  "Ripgrep search in project directory."
+  (interactive)
+  (consult-ripgrep (or my/project-dir default-directory)))
+
+(global-set-key (kbd "C-p") #'my/find-file)
+(global-set-key (kbd "C-S-f") #'my/search-project)
 
 ;; ============================================================================
 ;; 9. In-Buffer Completion — corfu + cape
@@ -470,12 +482,15 @@
 (global-unset-key (kbd "C-j"))  ; was: newline-and-indent / join-line
 (global-unset-key (kbd "C-k"))  ; was: kill-line
 ;; C-o: open folder as working directory (Sublime: Open Folder)
+(defvar my/project-dir nil "Current project working directory.")
+
 (defun my/open-folder ()
-  "Choose a folder to open as project workspace in treemacs."
+  "Choose a folder and set it as the working project directory."
   (interactive)
-  (let ((dir (read-directory-name "Open folder: ")))
+  (let ((dir (expand-file-name (read-directory-name "Open folder: "))))
+    (setq my/project-dir dir)
     (setq default-directory dir)
-    (treemacs-select-directory)))
+    (message "Project directory: %s" dir)))
 (global-set-key (kbd "C-o") #'my/open-folder)
 (global-unset-key (kbd "C-t"))  ; was: transpose-chars
 (global-unset-key (kbd "C-y"))  ; was: yank (C-v is paste via CUA)
