@@ -634,6 +634,11 @@ Updates treemacs sidebar if visible."
 
 (global-set-key (kbd "C-j") #'my/toggle-terminal)
 
+;; Make C-j work inside the terminal too (term-mode intercepts all C- keys)
+(add-hook 'term-mode-hook
+          (lambda ()
+            (define-key term-raw-map (kbd "C-j") #'my/toggle-terminal)))
+
 ;; ============================================================================
 ;; 21. Rainbow delimiters
 ;; ============================================================================
