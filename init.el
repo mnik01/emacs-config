@@ -201,10 +201,45 @@
           (string-prefix-p " " name))))
   (setq centaur-tabs-hide-tab-function #'my/centaur-tabs-hide-tab)
   :bind
-  (("C-<tab>"     . centaur-tabs-forward)
-   ("C-<iso-lefttab>" . centaur-tabs-backward)
-   ("C-S-<tab>"   . centaur-tabs-backward)
-   ("C-w"         . centaur-tabs--kill-this-buffer-dont-ask)))  ; Sublime: C-w closes tab
+  (("C-w" . centaur-tabs--kill-this-buffer-dont-ask)))  ; Sublime: C-w closes tab
+
+;; Tab switching — use centaur-tabs' own stable tab order,
+;; but skip hidden tabs by filtering the tabset
+(defun my/next-file-tab ()
+  "Switch to next visible file tab."
+  (interactive)
+  (let* ((tabset (centaur-tabs-current-tabset t))
+         (tabs (cl-remove-if
+                (lambda (tab)
+                  (my/centaur-tabs-hide-tab (centaur-tabs-tab-value tab)))
+                (centaur-tabs-tabs tabset)))
+         (selected (centaur-tabs-selected-tab tabset))
+         (pos (cl-position selected tabs :test #'equal))
+         (next (if (and pos (< (1+ pos) (length tabs)))
+                   (nth (1+ pos) tabs)
+                 (car tabs))))
+    (when next
+      (centaur-tabs-buffer-select-tab next))))
+
+(defun my/prev-file-tab ()
+  "Switch to previous visible file tab."
+  (interactive)
+  (let* ((tabset (centaur-tabs-current-tabset t))
+         (tabs (cl-remove-if
+                (lambda (tab)
+                  (my/centaur-tabs-hide-tab (centaur-tabs-tab-value tab)))
+                (centaur-tabs-tabs tabset)))
+         (selected (centaur-tabs-selected-tab tabset))
+         (pos (cl-position selected tabs :test #'equal))
+         (prev (if (and pos (> pos 0))
+                   (nth (1- pos) tabs)
+                 (car (last tabs)))))
+    (when prev
+      (centaur-tabs-buffer-select-tab prev))))
+
+(global-set-key (kbd "C-<tab>") #'my/next-file-tab)
+(global-set-key (kbd "C-<iso-lefttab>") #'my/prev-file-tab)
+(global-set-key (kbd "C-S-<tab>") #'my/prev-file-tab)
 
 ;; Reopen closed tab (C-S-t) — track closed file paths
 (defvar my/closed-file-history nil "List of recently closed file paths.")
