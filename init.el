@@ -542,6 +542,7 @@ Updates treemacs sidebar if visible."
   (interactive)
   (let ((buf (generate-new-buffer "untitled")))
     (switch-to-buffer buf)
+    (fundamental-mode)
     (setq buffer-offer-save t)))
 (global-set-key (kbd "C-n") #'my/new-buffer)
 
@@ -585,9 +586,22 @@ Updates treemacs sidebar if visible."
         web-mode-enable-current-element-highlight t))
 
 (use-package emmet-mode
-  :hook ((web-mode . emmet-mode)
-         (css-mode . emmet-mode)
-         (css-ts-mode . emmet-mode)))
+  :config
+  (define-globalized-minor-mode global-emmet-mode emmet-mode
+    (lambda () (emmet-mode 1)))
+  (global-emmet-mode 1)
+  :config
+  (setq emmet-move-cursor-between-quotes t)
+  ;; Unbind C-j (conflicts with terminal toggle), use TAB instead
+  (define-key emmet-mode-keymap (kbd "C-j") nil)
+  (defun my/emmet-expand-or-indent ()
+    "Expand emmet abbreviation or fall back to indent/completion."
+    (interactive)
+    (if (emmet-expr-on-line)
+        (emmet-expand-line nil)
+      (indent-for-tab-command)))
+  (define-key emmet-mode-keymap (kbd "TAB") #'my/emmet-expand-or-indent)
+  (define-key emmet-mode-keymap (kbd "<tab>") #'my/emmet-expand-or-indent))
 
 (use-package typescript-mode
   :mode "\\.ts\\'"
