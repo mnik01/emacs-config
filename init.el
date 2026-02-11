@@ -479,17 +479,21 @@
 (global-set-key (kbd "C-q") #'save-buffers-kill-terminal)
 
 ;; Unbind Emacs-only keys that don't exist in Sublime and cause confusion
-(global-unset-key (kbd "C-j"))  ; was: newline-and-indent / join-line
 (global-unset-key (kbd "C-k"))  ; was: kill-line
 ;; C-o: open folder as working directory (Sublime: Open Folder)
 (defvar my/project-dir nil "Current project working directory.")
 
 (defun my/open-folder ()
-  "Choose a folder and set it as the working project directory."
+  "Choose a folder and set it as the working project directory.
+Updates treemacs sidebar if visible."
   (interactive)
   (let ((dir (expand-file-name (read-directory-name "Open folder: "))))
     (setq my/project-dir dir)
     (setq default-directory dir)
+    ;; Update treemacs to show the new directory
+    (when (fboundp 'treemacs--show-single-project)
+      (let ((name (file-name-nondirectory (directory-file-name dir))))
+        (treemacs--show-single-project (treemacs-canonical-path dir) name)))
     (message "Project directory: %s" dir)))
 (global-set-key (kbd "C-o") #'my/open-folder)
 (global-unset-key (kbd "C-t"))  ; was: transpose-chars
@@ -596,7 +600,42 @@
   :bind ("C-S-g" . magit-status))
 
 ;; ============================================================================
-;; 20. Rainbow delimiters
+;; 20. Terminal panel (C-j toggle, like VSCode)
+;; ============================================================================
+
+(defvar my/terminal-buffer-name "*terminal*")
+(defvar my/terminal-window nil)
+
+(defun my/toggle-terminal ()
+  "Toggle a terminal panel at the bottom. Hides without killing."
+  (interactive)
+  (cond
+   ;; Terminal window is visible — hide it
+   ((and my/terminal-window (window-live-p my/terminal-window))
+    (delete-window my/terminal-window)
+    (setq my/terminal-window nil))
+   ;; Terminal buffer exists but hidden — show it
+   ((get-buffer my/terminal-buffer-name)
+    (setq my/terminal-window
+          (display-buffer-in-side-window
+           (get-buffer my/terminal-buffer-name)
+           '((side . bottom) (slot . 0) (window-height . 0.3))))
+    (select-window my/terminal-window))
+   ;; No terminal — create one
+   (t
+    (let ((buf (save-window-excursion
+                 (ansi-term (or (getenv "SHELL") "/bin/bash")
+                            "terminal")
+                 (current-buffer))))
+      (setq my/terminal-window
+            (display-buffer-in-side-window
+             buf '((side . bottom) (slot . 0) (window-height . 0.3))))
+      (select-window my/terminal-window)))))
+
+(global-set-key (kbd "C-j") #'my/toggle-terminal)
+
+;; ============================================================================
+;; 21. Rainbow delimiters
 ;; ============================================================================
 
 (use-package rainbow-delimiters
