@@ -500,6 +500,16 @@ Updates treemacs sidebar if visible."
         (treemacs--show-single-project (treemacs-canonical-path dir) name)))
     (message "Project directory: %s" dir)))
 (global-set-key (kbd "C-o") #'my/open-folder)
+
+;; C-n: new empty buffer (Sublime: New File)
+(defun my/new-buffer ()
+  "Create a new empty buffer (like Untitled in Sublime)."
+  (interactive)
+  (let ((buf (generate-new-buffer "untitled")))
+    (switch-to-buffer buf)
+    (setq buffer-offer-save t)))
+(global-set-key (kbd "C-n") #'my/new-buffer)
+
 (global-unset-key (kbd "C-t"))  ; was: transpose-chars
 (global-unset-key (kbd "C-y"))  ; was: yank (C-v is paste via CUA)
 (global-unset-key (kbd "C-u"))  ; was: universal-argument
