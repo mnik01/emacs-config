@@ -84,6 +84,10 @@
 (recentf-mode 1)
 (setq recentf-max-saved-items 100)
 
+;; Persist variables across sessions (saves my/project-dir)
+(savehist-mode 1)
+(add-to-list 'savehist-additional-variables 'my/project-dir)
+
 ;; Delete trailing whitespace on save
 (add-hook 'before-save-hook #'delete-trailing-whitespace)
 
@@ -621,16 +625,21 @@ Updates treemacs sidebar if visible."
            (get-buffer my/terminal-buffer-name)
            '((side . bottom) (slot . 0) (window-height . 0.3))))
     (select-window my/terminal-window))
-   ;; No terminal — create one
+   ;; No terminal — create one in project directory
    (t
-    (let ((buf (save-window-excursion
-                 (ansi-term (or (getenv "SHELL") "/bin/bash")
-                            "terminal")
-                 (current-buffer))))
+    (let* ((dir (or my/project-dir default-directory))
+           (buf (save-window-excursion
+                  (ansi-term (or (getenv "SHELL") "/bin/bash")
+                             "terminal")
+                  (current-buffer))))
       (setq my/terminal-window
             (display-buffer-in-side-window
              buf '((side . bottom) (slot . 0) (window-height . 0.3))))
-      (select-window my/terminal-window)))))
+      (select-window my/terminal-window)
+      ;; cd to project directory explicitly
+      (term-send-string (get-buffer-process buf)
+                        (format "cd %s && clear\n"
+                                (shell-quote-argument dir)))))))
 
 (global-set-key (kbd "C-j") #'my/toggle-terminal)
 
@@ -658,6 +667,10 @@ Updates treemacs sidebar if visible."
             (dolist (buf '("*Warnings*" "*Compile-Log*"))
               (when (get-buffer buf) (kill-buffer buf)))
             (delete-other-windows)
+            ;; Restore project directory from previous session
+            (when (and (boundp 'my/project-dir) my/project-dir
+                       (file-directory-p my/project-dir))
+              (setq default-directory my/project-dir))
             (message "Emacs loaded in %.2f seconds with %d garbage collections."
                      (float-time (time-subtract after-init-time before-init-time))
                      gcs-done)))
