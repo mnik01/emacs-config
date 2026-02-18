@@ -13,6 +13,12 @@
 (push '(background-color . "#2d2a2e") default-frame-alist)
 (push '(foreground-color . "#fcfcfa") default-frame-alist)
 
+;; Initial frame size — 80 columns x 24 lines
+(push '(width . 80) default-frame-alist)
+(push '(height . 24) default-frame-alist)
+(push '(width . 80) initial-frame-alist)
+(push '(height . 24) initial-frame-alist)
+
 ;; Pixel-wise frame resizing (normal app behavior)
 (setq frame-resize-pixelwise t)
 

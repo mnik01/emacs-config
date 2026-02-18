@@ -1,5 +1,9 @@
 ;;; init.el --- Sublime Text 4-like Emacs config -*- lexical-binding: t; -*-
 
+;; Save the launch directory before anything changes it
+(defvar my/launch-directory default-directory
+  "Directory from which Emacs was launched.")
+
 ;; External dependencies:
 ;;   npm install -g typescript-language-server typescript
 ;;   npm install -g vscode-langservers-extracted
@@ -112,9 +116,8 @@
 ;; Suppress *Warnings* buffer from popping up
 (setq warning-minimum-level :error)
 
-;; Start with a clean empty buffer (acts like "untitled" file)
+;; Start with a clean empty buffer when no file is given
 (setq initial-major-mode 'fundamental-mode)
-(setq initial-buffer-choice t)  ; *scratch* buffer
 
 ;; Automatically refresh buffers when files change on disk
 (global-auto-revert-mode 1)
@@ -726,10 +729,18 @@ Updates treemacs sidebar if visible."
             (dolist (buf '("*Warnings*" "*Compile-Log*"))
               (when (get-buffer buf) (kill-buffer buf)))
             (delete-other-windows)
-            ;; Restore project directory from previous session
-            (when (and (boundp 'my/project-dir) my/project-dir
-                       (file-directory-p my/project-dir))
-              (setq default-directory my/project-dir))
+            ;; Force frame size to 80x24
+            (set-frame-size (selected-frame) 80 24)
+            ;; Always use the directory Emacs was launched from
+            (setq my/project-dir my/launch-directory)
+            (setq default-directory my/launch-directory)
+            ;; Update treemacs to show launch directory when it loads
+            (with-eval-after-load 'treemacs
+              (let ((dir my/launch-directory)
+                    (name (file-name-nondirectory
+                           (directory-file-name my/launch-directory))))
+                (treemacs--show-single-project
+                 (treemacs-canonical-path dir) name)))
             (message "Emacs loaded in %.2f seconds with %d garbage collections."
                      (float-time (time-subtract after-init-time before-init-time))
                      gcs-done)))
